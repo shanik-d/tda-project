@@ -1,0 +1,212 @@
+\documentclass[a4paper]{article}
+
+%% Language and font encodings
+\usepackage[english]{babel}
+%%\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+
+%% Sets page size and margins
+\usepackage[a4paper,top=3cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+
+%% Useful packages
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{xcolor}
+
+\title{Can we use Topological Data Analysis to learn about Image Data?}
+\author{Shanik Dassenaike}
+
+\begin{document}
+\maketitle
+\texttt{id15663@my.bristol.ac.uk}
+
+\begin{abstract}
+Can we use topological data analysis to learn about image data? 
+
+Topological data analysis is the method of transforming data of some description into a topological shape to analyse it. Its key insight is that data fundamentally has shape, and that shape matters. It can be used to find out information about the data that is obscured from other methods of analysis, for example hidden patterns. Moreover, a lot of data is very high dimensional, and as such is very sparse. Traditional analysis techniques rely heavily on dimensionality reduction and chosen metrics in order to say anything useful about the data, and can be sensitive to errors caused by noise. With topological data analysis, dimensionality reduction is effectively built-in, and it is insensitive to the particular metric used. It is also robust to noise, as again it is the overall shape of the data that is important.
+
+Image data is often very high dimensional, considering that it is usually made of $n \times n$ (with $n$ typically $\gg 10^{2}$) pixels in 3 dimensions, sometimes with a fourth alpha dimension also. We posit that topological data analysis provides a novel way to consider this data, and learn from it. There is clear intuition in this; images are fundamentally made up of different (geometric) shapes and there is no reason this should not translate well into topology. Additionally, the high dimensionality of image data is often a problem for traditional techniques - most of the dimensions provide no useful information and do not relate to the mapping or properties of the image itself.
+
+\end{abstract}
+
+\section*{Research about/Mathematical Foundations of Topology}
+The below uses:
+\begin{itemize}
+\item \url{ftp://ftp.mpi-sb.mpg.de/pub/conferences/adfocs-07/graphics/zomorodian-slides-1.pdf}
+\item \url{https://www.researchgate.net/publication/310406546_Persistent_homology_a_step-by-step_introduction_for_newcomers}
+\item \url{https://math.stackexchange.com/questions/884666/what-are-differences-between-affine-space-and-vector-space}
+\item \url{https://en.wikipedia.org/wiki/Affine_space}
+\item \url{https://en.wikipedia.org/wiki/Simplex}
+\item \url{https://en.wikipedia.org/wiki/Simplicial_complex}
+\item \url{http://mathworld.wolfram.com/AffineSpace.html}
+\end{itemize}
+
+Although the results and analysis contained in this thesis do not require a deep understanding of topology or image processing to interpret, herein we provide a mathematical basis and low-level explanation of some of the image processing algorithms used, to aid in understanding the work to follow and the conclusions that can be drawn from the results. To avoid over-explaining, however, we assume the reader has knowledge of basic Linear Algebra and Group Theory.
+
+\subsection*{Affine Spaces}
+\textcolor{red}{Affine Spaces} are structure that generalise vector spaces, avoiding concepts of distance and measure of angles; the only properties that remain are related to parallelism and ratio of lengths of parallel line segments.
+\\
+Suppose we had a vector space $V$ over a field $\mathbb{F}$. Let $A$ be a non-empty set. For any vector $\textbf{v} \in V$ and element $p \in A$, we define addition $p + \textbf{v} \in A$ with the following conditions:
+\begin{itemize}
+\item $(p + \textbf{v}) + \textbf{w} = p + (\textbf{v} + \textbf{w})$
+\item $\forall q \in A, \exists! \textbf{w} \in V \text{ s.t. } q = p + \textbf{w}$
+\item $p + \textbf{0} = p$ (Note this is implied by the above)
+\end{itemize}
+Then $A$ is an \textcolor{red}{affine space}, and $\mathbb{F}$ is called the \textcolor{red}{coefficient field}.
+\\
+\\
+An intuitive understanding of affine spaces is to consider them as vector spaces in which we have 'forgotten' where the origin is. As such, no vector has a unique origin and thus cannot be associated with any particular point.
+\\
+An example of an affine space is the plane in $\mathbb{R}^{3}$ defined by $<x, y, 1>$, i.e. the $xy$-plane sitting at $z = 1$; this is clearly not a vector space as it does not contain the origin. However, we might still subtract two points in this plane and obtain a vector, just as in a vector space. On the other hand, in this space we cannot just take a point and find a vector with it, as there is no origin to define this vector from; similarly, we cannot add two points together to obtain a vector as they are not measured relative to an origin.
+\\
+Many notions carry over from vector spaces to affine spaces in some way; suppose we have an affine space $A$ and a subset $X \subseteq A$. Then:
+\begin{itemize}
+\item The smallest affine subspace containing $X$ is called the \textcolor{red}{affine span} of $X$
+\item $X$ is \textcolor{red}{affinely independent} if the affine span of any proper subset of $X$ is a proper subset of the affine span of $X$.
+\end{itemize}
+
+\subsection*{Simplicial complexes}
+Discretised objects, such as mathematical graphs, or digital images, can be represented by simplicial complexes. These are collections of "well-glued" bricks called simplices.
+
+\subsubsection*{Simplex}
+A simplex generalises the notion of a triangle or tetrahedron to arbitrary dimensions.
+Formally, suppose we had $k+1$ affinely independent points, $u_{0}, u_{1}, ..., u_{k} \in \mathbb{R}^{k}$. The convex hull of these points is the \textcolor{red}{k-simplex} $\sigma$ they determine; it is the set of points
+\[C = \left\{ \theta_{0} u_{0} + ... + \theta_{k} u_{k} | \sum_{i = 0}^{k} \theta_{i} = 1 \text{ and } \theta_{i} \geq 0 \text{ } \forall i \right\} \]
+
+We have that a 0-simplex is a point, a 1-simplex an edge, a 2-simplex a triangle, a 3-simplex is a tetrahedron and the notion generalises on. The \textcolor{red}{dimension} of $\sigma, \text{ } dim(\sigma) = k$.
+\\
+For a simplex $\sigma$, any non-empty subset of the points generating $\sigma$ whose convex hull itself is a simplex is called a \textcolor{red}{face} of $\sigma$.
+\\
+\subsubsection*{Simplicial Complex}
+We can "glue together" simplices to form a simplicial complex.
+\\
+A \textcolor{red}{simplicial complex} $\Sigma$ is a finite set of simplices that satisfies the following "gluing" conditions:
+\begin{itemize}
+\item Any face of a simplex in $\Sigma$ is itself in $\Sigma$
+\item The intersection of any two simplices $ \sigma_{1}, \sigma_{2} \in \Sigma$ is a face of both $\sigma_{1} \text{ and } \sigma_{2}$
+\end{itemize}
+
+The \textcolor{red}{dimension of a simplicial complex} $\Sigma, \text{ } dim(\Sigma)$, is the largest dimension of its simplices.
+
+\subsection*{Topological Spaces}
+
+\begin{itemize}
+\item We have a set of points, $X$
+\item An \textcolor{red}{open set} is a subset of $X$.
+\item A \textcolor{red}{Topology} on X is then a set of open sets $T \subset 2^{X}$, such that:
+	\begin{enumerate}
+	\item If $S_{1}, S_{2} \in T$, then $S_{1} \cap S_{2} \in T$
+    \item If $\forall j \in J \text{, we have that } S_{j} \in T \text{, then } \bigcup_{j \in J} S_{j} \in T$
+    \item $\varnothing, X \in T$
+	\end{enumerate}
+\item $\mathbb{X} = (X, T)$ is a \textcolor{red}{topological space}
+\item Different topologies are possible
+\item A \textcolor{red}{Metric Space} is an open set defined by some metric
+\end{itemize}
+
+Note that the set $X$ on its own may be called a topological space.
+
+\subsection*{Cover}
+\begin{itemize}
+\item We have a set of points, $X$
+\item If $C$ is a family of sets, and the union of $C$ contains $X$, then $C$ is a cover of $X$
+\end{itemize}
+This can be applied specifically to topological spaces:
+\begin{itemize}
+\item Let $X$ be a topological space.
+\item Suppose $C = \{ U_{i} | U_{i} \subset X \text{ for } i \in I \}$ is a family of subsets of $X$ (with I some index set)
+\item Then $C$ is a cover of $X$ if the union of C is equal to the whole set X, or in other words if $\bigcup_{i \in I} X_{i} = X$
+\item We then say that $C$ covers $X$, or that the sets $X_{i}$ cover $X$.
+\end{itemize}
+Notice the difference in the definition is that in topology, the family of sets $C$ must consist of subsets of $X$, and we see that when this is applied to the earlier definition, it coincides with that given for topological spaces - as the union of the subsets necessarily cannot be any larger than the whole set $X$.
+
+\subsection*{Homeomorphisms}
+Suppose we have topological spaces $X, Y$, with a continuous bijective map $f: X \to Y$ (with $f^{-1}$ also continuous). Then:
+\begin{itemize}
+\item $f$ is a \textcolor{red}{homeomorphism}
+\item $X$ is \textcolor{red}{homeomorphic} to $Y$
+\item $X \approx Y$
+\item $X$ and $Y$ have the same \textcolor{red}{topological type}
+\end{itemize}
+
+\subsection*{Computational Topology}
+When we work with topology in a computational setting, our input is often \textcolor{red}{Point Cloud Data}, which is:
+\begin{itemize}
+\item Massive
+\item Discrete
+\item Nonuniformly Sampled
+\item Noisy
+\item Embedded in $\mathbb{R}^{d}$, sometimes with $d \gg 3$
+\end{itemize}
+
+We want to find out \textcolor{red}{its shape}.
+
+\subsection*{Image Processing}
+Many aspects of computation, for example computer vision, rely on image processing algorithms to work with images and image data. One reason for this that is common with the requirement to use it with TDA is dimensionality reduction and, more generally, reducing the amount of data required to work with - often due to computational constraints.
+
+Two well-known image processing algorithms are the scale-invariant feature transform (SIFT) and the speeded-up robust featues (SURF) algorithms. These are both proprietary algorithms, so we can use them for the academic purposes of this paper, though cannot explain them in great detail.
+
+Both algorithms work by creating 'key-points', and associate a 'descriptor' to each. What this means is that in any image, there are points which may be considered 'interesting'. The algorithms work by finding sets of interesting points, each of which is then described mathematically with a vector in a relatively large number of dimensions (typically 64 for SURF and 128 for SIFT). When all key-points with their descriptors are considered together for an image, a feature description of the image is obtained.
+
+It is important to note that the key-points say little about the image by themselves; each key-point is generally only a position within the image and an area around that position (different algorithms may include more or less data than this), but it is not enough to describe the image fully. Key-points are, as their name implies, little more than just points in the image. The descriptors are what tell us what exactly is 'interesting' about each key-point, or in other words, the descriptors are what provide the numerical description of each key-point. As such, while key-points may change from image to image, if they are describing the same object, their descriptors should have little distance between them - recall that mathematically descriptors are vectors, so we can compare the distance between any two descriptors - or potentially even be the same, and so descriptors are used to compare key-points (this is important to note for our use). This is only dependent on the algorithm in the sense that descriptors are not unilaterally invariant to transformations, but this issue is part of what SIFT and SURF seek to solve.
+
+There are papers that show that an image can, to some extent, be reconstructed from these feature descriptions. Moreover, these algorithms are often used by extracting features from some training data, and then using this to recognise features in other images - i.e. these algorithms are designed to be able to recognise objects across images. For our purposes, however, it suffices to see that this means the features serve as a compressed representation of the images, retaining its interesting features, which will ultimately be from what we extract our topological information.
+
+\subsubsection*{SIFT}
+The SIFT algorithm was patented in 1999, creating a set of key-points with associated descriptors. These descriptors are typically 128-dimensional, and are scale-invariant. So if two images both contain the same object, but one is more zoomed-in such that the object appears larger in the image, the matching key-points for the object will also contain the same descriptors. SIFT descriptors are also invariant to orientation, illumination changes, and partially invariant to affine distortion (i.e. transformations in affine space).
+
+To find the key-points and descriptors, SIFT creates a scale space, and then uses this to approximate the Laplacian of Gaussians (using difference of Gaussians from those used to contstrcut the scale space). Maxima and minima in the difference of Gaussian provide key-points, and some of these are then discarded (if they are edges or low-contrast points). Each key-point is then given an orientation, and finally descriptors are generated for each key-point based on the area around it.
+
+\subsubsection*{SURF}
+The SURF algorithm was patented in 2006, inspired by SIFT but intended to be faster and invariant under more image transformations. Although SIFT descriptors are orientation-invariant, they are not fully robust with respect to rotations, where SURF is.
+
+The outline of generating SURF key-points and descriptors is largely the same as SIFT, but SURF does not use Gaussians to approximate the Laplacian of Gaussians in the way that SIFT does, instead approximating them with integral images which speeds up computation. The computation of the descriptors uses the integral images also, saving on computation again.
+
+\section*{Research about TDA itself}
+the below uses: 
+
+\begin{itemize}
+\item \url{https://arxiv.org/pdf/1710.04019.pdf}
+\item \url{https://www.youtube.com/watch?v=XfWibrh6stw}
+\item \url{https://www.youtube.com/watch?v=fUvl-B2lx5Q}
+\item \url{https://www.nature.com/articles/srep01236}
+\end{itemize}
+
+\subsection*{The pipeline of TDA}
+Most existing TDA methods use the following pipeline as a basis. \textcolor{red}{This section is completely unoriginal, is there way to digest and rewrite it in a way that describes how I use TDA?}
+\begin{enumerate}
+\item \textcolor{red}{ assume the input is a finite set of points, with a notion of distance/similarity between them.} This distance could be induced by the metric in the ambient space (e.g. the Euclidean metric, when data is embedded in $\mathbb{R}^{d}$), or it can come as an intrinsic metric defined by a pairwise distance matrix. The definition of this metric is usually given as an input or guided by the application - we notice that the choice of metric might be critical to revealing interesting features.
+\item \textcolor{red}{To highlight the topology underpinning the data, we build a "continuous" shape on top of it.} Oftentimes this is a simplicial complex or a nested family of simiplicial complexes - a filtration - reflecting how the data is structured at different scales. We can see simplicial complexes as high-dimensional generalisations of neighbouring graphs that are classically built on top of data, in many standard data analysus or learning algorithms. We want to be able to define such structures that are proven to reflect relevant information about the structure of data, and that can be effectively constructed and manipulated in practice.
+\item \textcolor{red}{Topological or geometric information is extracted from the structures built on top of the data.} We can achieve two results from here; we could get a full reconstruction - typically a triangulation - of the shape underlying the data, and from this topological/geometric features can be easily extracted. On the other hand, we can get crude summaries or approximations, and from these the extraction of relevant information requires specific methods, for example persistent homology. Further to identifying interesting topological/geometric information, and visualising and interpreting this, the challenge at this step is to show its relevance, in particular its stability with respect to perturbations or presence of noise in the input data. For that purpose, understanding the statistical behavior of the inferred features is also an important question.
+\item \textcolor{red}{The extracted topological and geometric information provides new families of features and descriptors of the data.} We use these to better understand the data, particularly through visualization, but was also can be combine these families with other kinds of features for further analysis and machine learning tasks. Showing the added-value and the complementarity (with respect to other features) of the information provided by TDA tools is an important question at this step.
+\end{enumerate}
+
+There are three key concepts in topology that lend power to analysing or understanding data by find patterns in its shape: Coordinate Invariance, Deformation Invariance, and Compressed Representation.
+
+\begin{enumerate}
+\item \textbf{Coordinate Invariance:} Topology studies shapes in a coordinate-free manner; what that means is that the coordinate system in which we view a shape does not affect the properties of it that we study. The topological constructions depend only on the distance function intrinsic to the metric space within which the shape is specified.
+\item \textbf{Deformation Invariance:} The properties studied in topology are also invariant under "small" deformations - despite any "stretching" or "squashing", as long as the shape is not "torn" or "reglued", any property topology studies is unchanging. For example, if we were to write down the capital letter "A" on an elastic surface, and then stretched it in some directions, it will still retain its closed triangle and two legs pointing out. Similarly, a capital "A" written in different fonts is still clearly a letter A (and in fact humans are particularly good at recognising deformation-invariant properties), as the fundamental parts of the letter haven't changed.
+\item \textbf{Compressed Representations:} oftentimes an object that we want to study is very highly (potentially infinitely) complex in its detail and information contained. Topology allows us to approximate the object with a finite representation - a triangulation. This may mean identifying the object with a simplicial complex or a network, for example identifying a sphere with an icosahedron or a circle with a hexagon. In either case we go from infinite points on a surface to a small, finite number of points, edges and faces, so we lose some information (with these approximations curvature is an example) but we retain the important topological feature e.g. a loop
+\end{enumerate}
+
+An understanding of both the pipeline outlined earlier as well as these concepts is key to analysing the results we achieve. Our realisation of the pipeline will involve pre-processing the data-sets (images in our case) to find compressed representations, applying a filter function to create simplicial complexes, applying an algorithm to extract the topological data and then analysing these results. If, for example, we see that the results for both data-sets consists of two loops attached, with two branches at either end of each loop, we can conclude that these images have some similar underlying structure that the topology is highlighting. Even if the results aren't exactly similar, as long as these topological features are consistent from the results of one data-set to another, the deformation and coordinate invariance allow us to consider the results to be the same (or at least fundamentally similar). This provides us with a basis for confirming the usefulness of TDA with respect to image data, or to show unexpected similarities between images.
+
+\textcolor{red}{Random cubical complexes model noise in digital images}
+\\
+\\
+Rough plan: Take an image; process it to get vectorial/clustered data. Produce a topological analysis of this data (e.g. create a simplicial complex over the clusters and find out how it looks/if there are any obvious properties). Jumble the data somehow (mix up the vectors while maintaining their distance metric), and then apply the same topological analysis to it, compare the outputs. Can we use some finite/easy amount of applications to achieve showing them the same
+
+\section*{Method}
+
+\subsection*{Python Mapper}
+
+Python Mapper is a toolchain created by Daniel Mullner and Aravindakshan Babu. It realises the processing chain, at the least, running a data set through a filter function, then applying the Mapper algorithm created by Gurjeet Singh, Facundo Mémoli and Gunnar Carlsson, and finally visualising these results; these three steps together constitute a topological data analysis tool that we can use on an appropriate data-set. Indeed, we notice how this toolchain parallels the pipeline outlined earlier, other than the first step. The tool is presented as a GUI and also as a python module. This paper will demonstrate the application of both implementations to image data(, as well as explaining a new GUI catered towards analysing image data via Python Mapper). 
+
+\subsection*{Mapper algorithm}
+%remember to cite https://research.math.osu.edu/tgda/mapperPBG.pdf
+Gurjeet Singh, Facundo Mémoli and Gunnar Carlsson developed the mapper algorithm, and subsequently founded the company Ayasdi based on it. It is simple at its core: bin the data into overlapping bins, cluster each bin, and finally create a graph where vertices represent clusters, and two vertices are connected by an edge if they have common points. The assumptions made are that we have a point cloud with $N$ points $x \in X$, and along with there is a filter function that maps the point cloud to the reals (or potentially $\mathbb{R}^{2}$, or the unit circle etc), $f: X \to \mathbb{R}$, for which the value is known for each of the $N$ data points. It is also assumed that the inter-point distances between points can be calculated - this again lines up with our concept that distances are what are important in topology (and in fact can be key to understanding how data is structured). A covering of the data is found by taking the range of $f$ over $X$, and dividing it into a set of overlapping intervals (bins), $S$. For each interval $I_{j} \in S$, the set of points in $X$ that map to points in $I$ is determined, and the set ${X_{j}}$ containing each of these sets clearly forms a cover. Thus we have constructed our 'overlapping bins'. So the next step is to cluster each bin.
+
+
+\end{document}
